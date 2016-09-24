@@ -129,9 +129,10 @@ func (b *BitSet) extendSetMaybe(i uint) {
 		} else if cap(b.set) >= nsize {
 			b.set = b.set[:nsize] // fast resize
 		} else if len(b.set) < nsize {
-			newset := make([]uint64, nsize, 2*nsize) // increase capacity 2x
-			copy(newset, b.set)
-			b.set = newset
+			// extend set to the correct size
+			for i := len(b.set); i < nsize; i++ {
+				b.set = append(b.set, 0)
+			}
 		}
 		b.length = i + 1
 	}
