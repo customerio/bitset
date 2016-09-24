@@ -9,7 +9,6 @@ package bitset
 import (
 	"encoding"
 	"encoding/json"
-	"fmt"
 	"math"
 	"math/rand"
 	"testing"
@@ -23,7 +22,6 @@ func TestStringer(t *testing.T) {
 	if v.String() != "{0,1,2,3,4,5,6,7,8,9}" {
 		t.Error("bad string output")
 	}
-	fmt.Println(v)
 }
 
 func TestEmptyBitSet(t *testing.T) {
@@ -107,6 +105,46 @@ func TestBitSetAndGet(t *testing.T) {
 	v.Set(100)
 	if v.Test(100) != true {
 		t.Errorf("Bit %d is clear, and it shouldn't be.", 100)
+	}
+}
+
+func TestNextUnset(t *testing.T) {
+	v := New(1000)
+	v.Set(0).Set(1)
+	next, found := v.NextUnset(0)
+	if !found || next != 2 {
+		t.Errorf("Found next clear bit as %d, it should have been 2", next)
+	}
+
+	v = New(1000)
+	for i := uint(0); i < 66; i++ {
+		v.Set(i)
+	}
+	next, found = v.NextUnset(0)
+	if !found || next != 66 {
+		t.Errorf("Found next clear bit as %d, it should have been 66", next)
+	}
+
+	v = New(1000)
+	for i := uint(0); i < 64; i++ {
+		v.Set(i)
+	}
+	v.Clear(45)
+	v.Clear(52)
+	next, found = v.NextUnset(10)
+	if !found || next != 45 {
+		t.Errorf("Found next clear bit as %d, it should have been 45", next)
+	}
+
+	v = New(1000)
+	for i := uint(0); i < 128; i++ {
+		v.Set(i)
+	}
+	v.Clear(73)
+	v.Clear(99)
+	next, found = v.NextUnset(10)
+	if !found || next != 73 {
+		t.Errorf("Found next clear bit as %d, it should have been 73", next)
 	}
 }
 
@@ -848,13 +886,12 @@ func BenchmarkSparseIterate(b *testing.B) {
 	}
 }
 
-
 // go test -bench=LemireCreate
 // see http://lemire.me/blog/2016/09/22/swift-versus-java-the-bitset-performance-test/
 func BenchmarkLemireCreate(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		bitmap := New(0) // we force dynamic memory allocation
-		for v := uint(0); v <= 100000000; v+= 100 {
+		for v := uint(0); v <= 100000000; v += 100 {
 			bitmap.Set(v)
 		}
 	}
@@ -864,7 +901,7 @@ func BenchmarkLemireCreate(b *testing.B) {
 // see http://lemire.me/blog/2016/09/22/swift-versus-java-the-bitset-performance-test/
 func BenchmarkLemireCount(b *testing.B) {
 	bitmap := New(100000000) // we force dynamic memory allocation
-	for v := uint(0); v <= 100000000; v+= 100 {
+	for v := uint(0); v <= 100000000; v += 100 {
 		bitmap.Set(v)
 	}
 	sum := uint(0)
@@ -873,12 +910,11 @@ func BenchmarkLemireCount(b *testing.B) {
 	}
 }
 
-
 // go test -bench=LemireIterate
 // see http://lemire.me/blog/2016/09/22/swift-versus-java-the-bitset-performance-test/
 func BenchmarkLemireIterate(b *testing.B) {
 	bitmap := New(100000000) // we force dynamic memory allocation
-	for v := uint(0); v <= 100000000; v+= 100 {
+	for v := uint(0); v <= 100000000; v += 100 {
 		bitmap.Set(v)
 	}
 	sum := uint(0)

@@ -51,6 +51,7 @@ import (
 
 // the wordSize of a bit set
 const wordSize = uint(64)
+const allBits uint64 = 0xffffffffffffffff
 
 // log2WordSize is lg(wordSize)
 const log2WordSize = uint(6)
@@ -128,7 +129,7 @@ func (b *BitSet) extendSetMaybe(i uint) {
 		} else if cap(b.set) >= nsize {
 			b.set = b.set[:nsize] // fast resize
 		} else if len(b.set) < nsize {
-			newset := make([]uint64, nsize, 2 * nsize) // increase capacity 2x
+			newset := make([]uint64, nsize, 2*nsize) // increase capacity 2x
 			copy(newset, b.set)
 			b.set = newset
 		}
@@ -200,6 +201,31 @@ func (b *BitSet) String() string {
 	}
 	buffer.WriteString("}")
 	return buffer.String()
+}
+
+// NextUnset returns the next unset bit from the specified index,
+// including possibly the current index
+// along with an error code (true = valid, false = no unset bit found)
+// for i,e := v.NextUnset(0); e; i,e = v.NextUnset(i + 1) {...}
+func (b *BitSet) NextUnset(i uint) (uint, bool) {
+	x := int(i >> log2WordSize)
+	if x >= len(b.set) {
+		return 0, false
+	}
+	w := b.set[x]
+	w = w >> (i & (wordSize - 1))
+	wA := allBits >> (i & (wordSize - 1))
+	if w != wA {
+		return i + trailingZeroes64(^w), true
+	}
+	x = x + 1
+	for x < len(b.set) {
+		if b.set[x] != allBits {
+			return uint(x)*wordSize + trailingZeroes64(^b.set[x]), true
+		}
+		x = x + 1
+	}
+	return 0, false
 }
 
 // NextSet returns the next bit set from the specified index,
@@ -519,8 +545,6 @@ func (b *BitSet) isEven() bool {
 // Clean last word by setting unused bits to 0
 func (b *BitSet) cleanLastWord() {
 	if !b.isEven() {
-		// Mask for cleaning last word
-		const allBits uint64 = 0xffffffffffffffff
 		b.set[wordsNeeded(b.length)-1] &= allBits >> (wordSize - b.length%wordSize)
 	}
 }
